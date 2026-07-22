@@ -1,0 +1,11 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "COSMOS_ENDPOINT": "https://cosmos-centinela-XXXX.documents.azure.com:443/",
+    "COSMOS_DATABASE": "centinela",
+    "COSMOS_CONTAINER": "transactions",
+    "EVENTGRID_TOPIC_ENDPOINT": "https://evgt-centinela-XXXX.eastus2-1.eventgrid.azure.net/api/events"
+  }
+}
