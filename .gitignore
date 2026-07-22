@@ -1,0 +1,21 @@
+# Dependencias
+node_modules/
+
+# Secretos y configuración local — NUNCA subir esto
+local.settings.json
+.env
+.env.local
+
+# Azure Functions Core Tools
+bin/
+obj/
+.azure/
+
+# Sistema operativo / editor
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
+
+# Bicep (si generas parámetros locales con secretos)
+*.bicepparam
