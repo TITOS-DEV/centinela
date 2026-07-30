@@ -15,6 +15,14 @@ param location string
 resource eventGridTopic 'Microsoft.EventGrid/topics@2024-06-01-preview' = {
   name: eventGridTopicName
   location: location
+  identity: {
+    // Necesaria para que la suscripcion "scoring-subscription" (semana 3)
+    // pueda entregar eventos a la cola scoring-queue de Service Bus, que
+    // tambien tiene disableLocalAuth=true: sin esta identidad y el rol
+    // Service Bus Data Sender (ver rbac.bicep), Event Grid no tiene forma de
+    // autenticarse contra la cola y la entrega queda encolada sin exito.
+    type: 'SystemAssigned'
+  }
   properties: {
     inputSchema: 'EventGridSchema'
     publicNetworkAccess: 'Enabled' // private endpoints están fuera de alcance del proyecto
@@ -25,3 +33,4 @@ resource eventGridTopic 'Microsoft.EventGrid/topics@2024-06-01-preview' = {
 output eventGridTopicName string = eventGridTopic.name
 output eventGridTopicEndpoint string = eventGridTopic.properties.endpoint
 output eventGridTopicId string = eventGridTopic.id
+output eventGridTopicPrincipalId string = eventGridTopic.identity.principalId

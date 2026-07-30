@@ -20,5 +20,23 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   }
 }
 
+// identity-documents: contenedor donde el analista sube el documento de
+// identidad a verificar (semana 3, requerimiento 2.3). Privado — el acceso
+// de Document Intelligence es via su identidad administrada (Storage Blob
+// Data Reader, ver rbac.bicep), nunca por SAS ni acceso publico.
+resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
+  parent: storageAccount
+  name: 'default'
+}
+
+resource identityDocumentsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  parent: blobServices
+  name: 'identity-documents'
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
 output storageAccountName string = storageAccount.name
 output storageAccountId string = storageAccount.id
+output identityDocumentsContainerName string = identityDocumentsContainer.name

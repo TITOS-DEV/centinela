@@ -1,0 +1,125 @@
+name: Centinela CI/CD
+
+# Cada push a main recorre: build -> test -> imagen de contenedor -> registro
+# privado -> despliegue, sin intervencion manual. Un fallo en `test` detiene
+# el pipeline antes de que se construya cualquier imagen (needs: build-and-test).
+#
+# Credenciales: OIDC federado (azure/login con id-token: write). GitHub emite
+# un token de corta duracion que Entra ID valida contra una federated
+# credential ya configurada en la identidad del pipeline -- no hay ningun
+# client secret, contraseña ni connection string en este archivo ni en
+# GitHub Secrets. Ver docs/architecture-decisions.md, "Por que GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+  ACR_NAME: ${{ vars.ACR_NAME }}
+  SUFFIX: ${{ vars.CENTINELA_SUFFIX }}
+  LOCATION: ${{ vars.AZURE_LOCATION }}
+
+jobs:
+  build-and-test:
+    name: Build y pruebas
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [ingest-api, scoring-engine]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: services/${{ matrix.service }}/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: services/${{ matrix.service }}
+        run: npm ci
+
+      - name: Ejecutar pruebas
+        working-directory: services/${{ matrix.service }}
+        run: npm test
+
+  build-and-push:
+    name: Construir y publicar imagenes
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [ingest-api, scoring-engine]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC, sin secretos de larga duracion)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login en el registro privado (via identidad de Azure, sin usuario/clave admin)
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build y push (tag = sha del commit)
+        uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ env.ACR_NAME }}.azurecr.io/${{ matrix.service }}:${{ github.sha }}
+            ${{ env.ACR_NAME }}.azurecr.io/${{ matrix.service }}:latest
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    name: Desplegar infraestructura y nuevas imagenes
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Desplegar main.bicep con las imagenes recien publicadas
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az deployment group create \
+              --resource-group "${{ env.RESOURCE_GROUP }}" \
+              --template-file infra/main.bicep \
+              --parameters suffix="${{ env.SUFFIX }}" \
+                           location="${{ env.LOCATION }}" \
+                           imageTag="${{ github.sha }}" \
+                           alertEmailAddress="${{ secrets.ALERT_EMAIL_ADDRESS }}" \
+              --name "centinela-deploy-${{ github.run_number }}" \
+              -o table
+
+      - name: Verificar que el endpoint de ingesta responde
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            FQDN=$(az deployment group show \
+              --resource-group "${{ env.RESOURCE_GROUP }}" \
+              --name "centinela-deploy-${{ github.run_number }}" \
+              --query properties.outputs.ingestApiFqdn.value -o tsv)
+            echo "Endpoint desplegado: https://$FQDN/healthz"
+            curl -sf --retry 5 --retry-delay 10 "https://$FQDN/healthz" || (echo "healthz no respondio" && exit 1)

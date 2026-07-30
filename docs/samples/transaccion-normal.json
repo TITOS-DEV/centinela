@@ -1,0 +1,11 @@
+{
+  "accountId": "acc_demo_normal",
+  "amount": 45000,
+  "currency": "COP",
+  "type": "purchase",
+  "channel": "pos",
+  "merchant": { "id": "mer_5502", "name": "Supermercado El Ahorro", "category": "groceries" },
+  "location": { "lat": 6.2442, "lon": -75.5812, "city": "Medellin", "country": "CO" },
+  "cardLast4": "1234",
+  "originTimestamp": "2026-07-30T15:00:00.000Z"
+}

@@ -84,6 +84,38 @@ resource transactionsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabas
   }
 }
 
+// Contenedor de casos (semana 3). Particionado por /accountId igual que
+// transactions: la consulta dominante de un analista ("casos abiertos de
+// esta cuenta") cae en una sola particion, y ademas mantiene juntas — en la
+// misma particion logica — las escrituras de caseWorker, explainerWorker y
+// documentWorker sobre el mismo caso.
+resource casesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-05-15' = {
+  parent: sqlDatabase
+  name: 'cases'
+  properties: {
+    resource: {
+      id: 'cases'
+      partitionKey: {
+        paths: [
+          '/accountId'
+        ]
+        kind: 'Hash'
+      }
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+        includedPaths: [ { path: '/*' } ]
+        compositeIndexes: [
+          [
+            { path: '/accountId', order: 'ascending' }
+            { path: '/openedAt', order: 'descending' }
+          ]
+        ]
+      }
+    }
+  }
+}
+
 output cosmosAccountName string = cosmosAccount.name
 output cosmosEndpoint string = cosmosAccount.properties.documentEndpoint
 output cosmosAccountId string = cosmosAccount.id

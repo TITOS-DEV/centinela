@@ -1,0 +1,21 @@
+{
+  "name": "centinela-ingest-api",
+  "version": "3.0.0",
+  "description": "Centinela — API de ingesta de transacciones (semana 3: contenedor en Azure Container Apps)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "@azure/cosmos": "^4.1.1",
+    "@azure/eventgrid": "^5.4.0",
+    "@azure/identity": "^4.4.1",
+    "applicationinsights": "^2.9.5",
+    "express": "^4.21.1",
+    "uuid": "^11.0.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

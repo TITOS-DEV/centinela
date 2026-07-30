@@ -1,0 +1,21 @@
+{
+  "name": "centinela-scoring-engine",
+  "version": "3.0.0",
+  "description": "Centinela — motor de scoring, gestion de casos, explicador y verificacion documental (semana 3, contenedor en Azure Container Apps)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "COSMOS_ENDPOINT=https://localhost:8081 SERVICEBUS_NAMESPACE=sb-test.servicebus.windows.net DOCUMENT_INTELLIGENCE_ENDPOINT=https://test.cognitiveservices.azure.com node --test test/"
+  },
+  "dependencies": {
+    "@azure-rest/ai-document-intelligence": "^1.0.0",
+    "@azure/cosmos": "^4.1.1",
+    "@azure/identity": "^4.4.1",
+    "@azure/service-bus": "^7.9.5",
+    "@azure/storage-blob": "^12.26.0",
+    "applicationinsights": "^2.9.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -17,6 +17,15 @@ param location string
 @description('Nombre de la cola de casos')
 param casesQueueName string = 'cases-queue'
 
+// Semana 3: 3 colas adicionales, mismo principio que cases-queue (entrega
+// garantizada, at-least-once, retenida hasta ack explicito):
+// - scoring-queue: recibe "Centinela.Transaction.Created" reenviado por la
+//   suscripcion de Event Grid (destino Service Bus, ver eventgrid-subscriptions.bicep).
+//   Es tambien la cola sobre la que escala scoring-engine (profundidad de cola).
+// - explainer-queue: desacopla la generacion de la explicacion de la apertura
+//   del caso (requerimiento 2.4: el explicador caido no bloquea casos nuevos).
+// - documents-queue: recibe "Microsoft.Storage.BlobCreated" reenviado por el
+//   System Topic de la cuenta de storage cuando el analista sube un documento.
 resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2024-01-01' = {
   name: serviceBusNamespaceName
   location: location
@@ -39,8 +48,41 @@ resource casesQueue 'Microsoft.ServiceBus/namespaces/queues@2024-01-01' = {
   }
 }
 
+resource scoringQueue 'Microsoft.ServiceBus/namespaces/queues@2024-01-01' = {
+  parent: serviceBusNamespace
+  name: 'scoring-queue'
+  properties: {
+    lockDuration: 'PT1M'
+    maxDeliveryCount: 10
+    deadLetteringOnMessageExpiration: true
+  }
+}
+
+resource explainerQueue 'Microsoft.ServiceBus/namespaces/queues@2024-01-01' = {
+  parent: serviceBusNamespace
+  name: 'explainer-queue'
+  properties: {
+    lockDuration: 'PT1M'
+    maxDeliveryCount: 10
+    deadLetteringOnMessageExpiration: true
+  }
+}
+
+resource documentsQueue 'Microsoft.ServiceBus/namespaces/queues@2024-01-01' = {
+  parent: serviceBusNamespace
+  name: 'documents-queue'
+  properties: {
+    lockDuration: 'PT5M' // el analisis de Document Intelligence puede tardar mas que 1 min
+    maxDeliveryCount: 10
+    deadLetteringOnMessageExpiration: true
+  }
+}
+
 output serviceBusNamespaceName string = serviceBusNamespace.name
 // FQDN que espera @azure/service-bus, sin protocolo ni queue: "sb-centinela-xxx.servicebus.windows.net"
 output serviceBusNamespaceFqdn string = '${serviceBusNamespace.name}.servicebus.windows.net'
 output casesQueueName string = casesQueue.name
+output scoringQueueName string = scoringQueue.name
+output explainerQueueName string = explainerQueue.name
+output documentsQueueName string = documentsQueue.name
 output serviceBusNamespaceId string = serviceBusNamespace.id
