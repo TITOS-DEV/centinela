@@ -1,6 +1,9 @@
 // rbac.bicep — Le da a la Managed Identity del Function App exactamente los permisos que
 // necesita y nada más (principio de mínimo privilegio: un Administrador audita esto en semana 3).
 
+@description('Nombre del namespace de Service Bus')
+param serviceBusNamespaceName string
+
 @description('Principal ID de la Managed Identity del Function App')
 param functionPrincipalId string
 
@@ -23,6 +26,10 @@ resource eventGridTopic 'Microsoft.EventGrid/topics@2024-06-01-preview' existing
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: keyVaultName
+}
+
+resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2024-01-01' existing = {
+  name: serviceBusNamespaceName
 }
 
 // Cosmos usa un sistema de roles propio (no el RBAC general de Azure) para acceso a datos.
@@ -53,6 +60,7 @@ resource eventGridRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-0
 }
 
 // Key Vault Secrets User: solo lectura de secretos, no puede crear ni borrar.
+// Key Vault Secrets User: solo lectura de secretos, no puede crear ni borrar.
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 
 resource keyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
@@ -60,6 +68,19 @@ resource keyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04
   scope: keyVault
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleId)
+    principalId: functionPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Service Bus Data Sender: permite enviar mensajes a la cola de casos, nada de leer ni administrar.
+var serviceBusDataSenderRoleId = '69a216fc-b8fb-44d8-bc22-1f3c2cd27a39'
+
+resource serviceBusRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(serviceBusNamespace.id, functionPrincipalId, serviceBusDataSenderRoleId)
+  scope: serviceBusNamespace
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', serviceBusDataSenderRoleId)
     principalId: functionPrincipalId
     principalType: 'ServicePrincipal'
   }

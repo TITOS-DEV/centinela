@@ -12,6 +12,7 @@
     "@azure/eventgrid": "^5.4.0",
     "@azure/functions": "^4.5.1",
     "@azure/identity": "^4.4.1",
+    "@azure/service-bus": "^7.9.5",
     "func": "^2.2.0",
     "uuid": "^14.0.1"
   },

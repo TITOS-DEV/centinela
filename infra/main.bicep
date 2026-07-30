@@ -42,6 +42,14 @@ module eventGrid 'modules/eventgrid.bicep' = {
   }
 }
 
+module serviceBus 'modules/servicebus.bicep' = {
+  name: 'servicebus-deploy'
+  params: {
+    serviceBusNamespaceName: 'sb-centinela-${suffix}'
+    location: location
+  }
+}
+
 module keyVault 'modules/keyvault.bicep' = {
   name: 'keyvault-deploy'
   params: {
@@ -60,6 +68,8 @@ module functionApp 'modules/function.bicep' = {
     cosmosEndpoint: cosmos.outputs.cosmosEndpoint
     eventGridTopicEndpoint: eventGrid.outputs.eventGridTopicEndpoint
     keyVaultUri: keyVault.outputs.keyVaultUri
+    serviceBusNamespaceFqdn: serviceBus.outputs.serviceBusNamespaceFqdn
+    casesQueueName: serviceBus.outputs.casesQueueName
   }
 }
 
@@ -70,6 +80,7 @@ module rbac 'modules/rbac.bicep' = {
     cosmosAccountName: cosmos.outputs.cosmosAccountName
     eventGridTopicName: eventGrid.outputs.eventGridTopicName
     keyVaultName: keyVault.outputs.keyVaultName
+    serviceBusNamespaceName: serviceBus.outputs.serviceBusNamespaceName
   }
 }
 

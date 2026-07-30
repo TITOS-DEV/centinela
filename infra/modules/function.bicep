@@ -3,6 +3,11 @@
 // (comparado con un App Service Plan dedicado, que cobra 24/7 exista tráfico o no). Consumption
 // es la opción que protege el crédito. Identidad administrada asignada por el sistema: así la
 // función se autentica contra Cosmos, Event Grid y Key Vault sin ninguna clave en app settings.
+@description('FQDN del namespace de Service Bus')
+param serviceBusNamespaceFqdn string
+
+@description('Nombre de la cola de casos')
+param casesQueueName string
 
 @description('Nombre único global del Function App')
 param functionAppName string
@@ -97,6 +102,18 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'KEYVAULT_URI'
           value: keyVaultUri
+        }
+        {
+          name: 'SERVICEBUS_NAMESPACE'
+          value: serviceBusNamespaceFqdn
+        }
+        {
+          name: 'SERVICEBUS_CASES_QUEUE'
+          value: casesQueueName
+        }
+        {
+          name: 'SCORE_THRESHOLD'
+          value: '70'
         }
       ]
     }
