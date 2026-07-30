@@ -67,12 +67,24 @@ az ad app federated-credential create --id <APP_ID> --parameters '{
   "subject": "repo:TITOS-DEV/centinela:ref:refs/heads/main",
   "audiences": ["api://AzureADTokenExchange"]
 }'
+# Si el repo fue renombrado o transferido alguna vez, GitHub puede emitir el
+# subject con IDs numéricos en vez del nombre (ej.
+# "repo:TITOS-DEV@181672590/centinela@1308792352:ref:refs/heads/main") — si el
+# primer push falla con AADSTS700213 "No matching federated identity record",
+# revisar el subject exacto en el log del job "Azure login" y actualizar la
+# federated credential (az ad app federated-credential update) para que coincida.
 
-# 3. Dar permisos sobre el resource group (Contributor: el pipeline necesita crear/actualizar
-#    todos los tipos de recurso del proyecto, incluyendo RBAC de Cosmos y push a ACR)
+# 3. Dar permisos sobre el resource group. Contributor no alcanza: main.bicep
+#    despliega roleAssignments (rbac.bicep), y crear/modificar RBAC requiere
+#    ademas "User Access Administrator" (o Owner) sobre el mismo scope --
+#    Contributor solo no tiene el permiso Microsoft.Authorization/roleAssignments/write.
 az role assignment create \
   --assignee <APP_ID> \
   --role Contributor \
+  --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-riwi-staging-v4
+az role assignment create \
+  --assignee <APP_ID> \
+  --role "User Access Administrator" \
   --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-riwi-staging-v4
 
 # 4. Cargar los secrets/vars en GitHub (con gh cli, desde la raíz del repo)
